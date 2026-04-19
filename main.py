@@ -1,5 +1,4 @@
-# библиотеки
-from math import *  # открывает всю библиотеку ко всем мат. числам
+from math import *
 from ODE_solvers import *
 import pandas as pd
 import numpy as np
@@ -23,24 +22,22 @@ omega = q * omega_q
 l_m = l_m_d * d
 W_0 = omega / Delta
 
-# ____________Расчет________________________
-psi_s = kappa_1 * (1 + lambda_1)  # для функции газоприхода при горении пороха с распадом зерна
+psi_s = kappa_1 * (1 + lambda_1)
 
 I_e = I_en
-f_ign = f_n  # сила пороха в пиростатическом периоде
-b_ign = b  # коволюм в пиростатическом периоде
+f_ign = f_n
+b_ign = b
 
-S = n_s * pi * d ** 2 / 4  # Площадь поперечного сечения канала ствола
-l_0 = W_0 / S  # приведенная длина камеры
+S = n_s * pi * d ** 2 / 4
+l_0 = W_0 / S
 
 zeta = (1 / Delta - 1 / delta) / (f_ign / p_ign + b)
-phi = K + 1 / 3 * omega * (1 + zeta) / q  # коэффициент для учета сил сопротивления, перемещения откатных частей орудия
+phi = K + 1 / 3 * omega * (1 + zeta) / q
 
 R_g = f_n / T_v
 S_w0 = 4 * W_0 / d
 
 
-# При температуре T = -50 градусов
 def f(T_0):
     return f_n * (1 + k_f * (T_0 - T_ref))
 
@@ -51,51 +48,45 @@ def I_e(T_0):
 
 def p_a(x):
     return p_a0 * (1 + k_a * (k_a + 1) / 4 * (x[1] / c_a0) ** 2 + k_a * x[1] / c_a0 * (
-                1 + ((k_a + 1) / 4 * (x[1] / c_a0)) ** 2) ** (1 / 2))
+            1 + ((k_a + 1) / 4 * (x[1] / c_a0)) ** 2) ** (1 / 2))
 
 
-# задаем функцию газоприхода при горении пороха с распадом зерна
 def psi(z):
     return kappa_1 * z * (1 + lambda_1 * z) * np.heaviside(1 - z, 0.5) + (
-                psi_s + kappa_2 * (z - 1) * (1 + lambda_2 * (z - 1))) * np.heaviside(z - 1, 0.5)
+            psi_s + kappa_2 * (z - 1) * (1 + lambda_2 * (z - 1))) * np.heaviside(z - 1, 0.5)
 
 
-# задаем среднебаллистическое давление ПГ
 def p_m(x, T_0):
     return (f(T_0) * omega * psi(x[5]) + f_ign * omega * zeta - (k - 1) * (phi * q * x[1] ** 2 / 2 + x[2] + x[3])) / (
-                S * x[0] - omega / delta * (1 - psi(x[5])) - b * omega * (psi(x[5]) + zeta))
+            S * x[0] - omega / delta * (1 - psi(x[5])) - b * omega * (psi(x[5]) + zeta))
 
 
-# x[0]=x_p; x[1] = V_p; x[2] = A_pa; x[3]= Q_w; x[4] = eta_t ;  x[5] = z
-# задаем систему уравнений
 def system(t, x, T_0):
     T = p_m(x, T_0) / R_g * (1 / (psi(x[5]) + zeta) * (x[0] / (l_0 * Delta) - 1 / delta + psi(x[5]) / delta) - b)
     mu_g = mu_g0 * (T_0s + T_cs) / (T + T_cs) * (T / T_0s) ** 1.5
     Re = (omega * (1 + zeta) * x[1] * d) / (2 * S * x[0] * mu_g)
-    # Re = (omega* x[1] * d) / ( 2 * S * x[0] * mu_g)
     Nu = 0.023 * Re ** 0.8 * Pr ** 0.4
     q_w = Nu * lambda_g / d * (T - T_0 - (x[4]) ** (1 / 2))
     l_p = x[0] - l_0
     S_w = S_w0 + pi * d * l_p
     dx_dt = np.zeros(6)
-    dx_dt[0] = x[1]  # V_p
-    dx_dt[1] = (p_m(x, T_0) - p_a(x)) * S / (phi * q) * np.heaviside(p_m(x, T_0) - p_a(x) - p_0,
-                                                                     0.5)  # *np.heaviside((p_m(x)-p_a(x)) - p_0,0.5) #dV_p/dt
-    dx_dt[2] = p_a(x) * S * x[1]  # dA_pa / dt
-    dx_dt[3] = S_w * q_w  # dQ_w / dt
-    dx_dt[4] = 2 * q_w ** 2 / (c_b * rho_b * lambda_b) - 2 * x[1] / x[0] * x[4]  # d eta_t / dt
-    dx_dt[5] = p_m(x, T_0) / I_e(T_0) * np.heaviside(z_e - x[5], 0.5)  # dz/dt
+    dx_dt[0] = x[1]
+    dx_dt[1] = (p_m(x, T_0) - p_a(x)) * S / (phi * q) * np.heaviside(p_m(x, T_0) - p_a(x) - p_0, 0.5)
+    dx_dt[2] = p_a(x) * S * x[1]
+    dx_dt[3] = S_w * q_w
+    dx_dt[4] = 2 * q_w ** 2 / (c_b * rho_b * lambda_b) - 2 * x[1] / x[0] * x[4]
+    dx_dt[5] = p_m(x, T_0) / I_e(T_0) * np.heaviside(z_e - x[5], 0.5)
     return dx_dt
 
 
-init = [l_0, 0, 0, 0, 0, 0]  # начальные условия t=0: x_p = l_0; V_p = 0;A_pa = 0; Q_w = 0; eta_t = 0; z = 0
+init = [l_0, 0, 0, 0, 0, 0]
 
-dt = time_step  # шаг по времени
-max_steps = 10000  # количество шагов
+dt = time_step
+max_steps = 10000
 
 
-def stop(t, x):  # условие остановки расчета
-    return l_m - (x[0] - l_0)  # условие вылета снаряда из канала ствола
+def stop(t, x):
+    return l_m - (x[0] - l_0)
 
 
 def sys_min(t, x):
@@ -111,15 +102,16 @@ def sys_max(t, x):
 
 
 def report_min(t, x):
-    return [psi(x[5]), p_m(x, T_0_min) / 1e6, x[0] - l_0]  # Баллистическое давление в МПа!!!!!!!
+    return [psi(x[5]), p_m(x, T_0_min) / 1e6, x[0] - l_0]
 
 
 def report_norm(t, x):
-    return [psi(x[5]), p_m(x, T_0_norm) / 1e6, x[0] - l_0]  # Баллистическое давление в МПа!!!!!!!
+    return [psi(x[5]), p_m(x, T_0_norm) / 1e6, x[0] - l_0]
 
 
 def report_max(t, x):
-    return [psi(x[5]), p_m(x, T_0_max) / 1e6, x[0] - l_0]  # Баллистическое давление в МПа!!!!!!!
+    return [psi(x[5]), p_m(x, T_0_max) / 1e6, x[0] - l_0]
+
 
 def create_opts_for_lagrange(csv_path: str, powder_name: str = '180/57',
                              T_0: float = 288.15) -> dict:
@@ -136,7 +128,7 @@ def create_opts_for_lagrange(csv_path: str, powder_name: str = '180/57',
             'q': vals['q'],
             'd': vals['d'],
             'W_0': W_0,
-            'T_0': T_0,  # +15°C = 288.15 K
+            'T_0': T_0,
             'phi_1': vals['K'],
             'p_0': vals['p_0']
         },
@@ -148,12 +140,12 @@ def create_opts_for_lagrange(csv_path: str, powder_name: str = '180/57',
             'b_ign': 0.0006
         },
         'meta_lagrange': {
-            'CFL': 0.9,  # по методичке
-            'n_cells': 300  # по методичке
+            'CFL': 0.9,
+            'n_cells': 300
         },
         'stop_conditions': {
-            'v_p': 995.0,  # целевая скорость
-            'x_p': l_m  # длина ствола
+            'v_p': 995.0,
+            'x_p': l_m
         }
     }
 
@@ -206,43 +198,36 @@ def find_reference_points_lagrange(result, x_initial=0.0):
 
     points = {}
 
-    # «0»: начало движения
     idx_0 = np.where(v_p_vals > 0.1)[0]
     if len(idx_0) > 0:
         i = idx_0[0]
         points['0'] = {'t': t_vals[i], 'p_b': p_b_vals[i], 'p_p': p_p_vals[i],
                        'p_m': p_m_vals[i], 'v_p': v_p_vals[i], 'l_p': l_p_vals[i]}
 
-    # p_b max
     idx = np.argmax(p_b_vals)
     points['p_b_max'] = {'t': t_vals[idx], 'p_b': p_b_vals[idx], 'p_p': p_p_vals[idx],
                          'p_m': p_m_vals[idx], 'v_p': v_p_vals[idx], 'l_p': l_p_vals[idx]}
 
-    # p_p max
     idx = np.argmax(p_p_vals)
     points['p_p_max'] = {'t': t_vals[idx], 'p_b': p_b_vals[idx], 'p_p': p_p_vals[idx],
                          'p_m': p_m_vals[idx], 'v_p': v_p_vals[idx], 'l_p': l_p_vals[idx]}
 
-    # p_m max
     idx = np.argmax(p_m_vals)
     points['p_m_max'] = {'t': t_vals[idx], 'p_b': p_b_vals[idx], 'p_p': p_p_vals[idx],
                          'p_m': p_m_vals[idx], 'v_p': v_p_vals[idx], 'l_p': l_p_vals[idx]}
 
-    # «s»: z >= 1
     idx_s = np.where(z_vals >= 1.0)[0]
     if len(idx_s) > 0:
         i = idx_s[0]
         points['s'] = {'t': t_vals[i], 'p_b': p_b_vals[i], 'p_p': p_p_vals[i],
                        'p_m': p_m_vals[i], 'v_p': v_p_vals[i], 'l_p': l_p_vals[i]}
 
-    # «e»: psi >= 0.99
     idx_e = np.where(psi_vals >= 0.99)[0]
     if len(idx_e) > 0:
         i = idx_e[0]
         points['e'] = {'t': t_vals[i], 'p_b': p_b_vals[i], 'p_p': p_p_vals[i],
                        'p_m': p_m_vals[i], 'v_p': v_p_vals[i], 'l_p': l_p_vals[i]}
 
-    # «m»: конец
     i = len(t_vals) - 1
     points['m'] = {'t': t_vals[i], 'p_b': p_b_vals[i], 'p_p': p_p_vals[i],
                    'p_m': p_m_vals[i], 'v_p': v_p_vals[i], 'l_p': l_p_vals[i]}
@@ -250,116 +235,13 @@ def find_reference_points_lagrange(result, x_initial=0.0):
     return points, (t_vals, p_b_vals, p_p_vals, p_m_vals, v_p_vals, l_p_vals)
 
 
-def plot_comparison_termo_lagrange(result_termo, result_lagrange, T_label="+15°C"):
-    t_termo = result_termo['t'] * 1000  # мс
-    p_m_termo = result_termo['p'] / 1e6  # МПа
-    v_p_termo = result_termo['v']  # м/с
-    l_p_termo = result_termo['x']  # м
-
-    # Газодинамическая модель
-    layers = result_lagrange['layers']
-    t_lag = np.array([layer['t'] * 1000 for layer in layers])
-    p_m_lag = np.array([np.mean(layer['p']) / 1e6 for layer in layers])
-    v_p_lag = np.array([layer['u'][-1] for layer in layers])
-    l_p_lag = np.array([layer['x'][-1] for layer in layers])
-
-    # Создаем фигуру с двумя графиками
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 8))
-
-    # ========== График 1: от времени ==========
-    # Давление
-    ax1.plot(t_termo, p_m_termo, '-', color='blue', linewidth=2.5,
-             label='$p_m$ нульмерная')
-    ax1.plot(t_lag, p_m_lag, '--', color='red', linewidth=2.5,
-             label='$p_m$ газодинамическая')
-
-    ax1.set_xlabel('t, мс', fontsize=14)
-    ax1.set_ylabel('$p_m$, МПа', fontsize=14)
-    ax1.set_ylim(0, 400)
-    ax1.grid(True, alpha=0.7)
-    ax1.legend(loc='upper right')
-
-    # Скорость (правая ось)
-    ax1_twin = ax1.twinx()
-    ax1_twin.plot(t_termo, v_p_termo, '-', color='blue',
-                  linewidth=2, linestyle='--', alpha=0.7)
-    ax1_twin.plot(t_lag, v_p_lag, '--', color='red',
-                  linewidth=2, linestyle='--', alpha=0.7)
-    ax1_twin.set_ylabel('$V_p$, м/с', fontsize=14)
-    ax1_twin.set_ylim(0, 1000)
-
-    ax1.set_title(f'Зависимость от времени (T = {T_label})')
-
-    # ========== График 2: от пути ==========
-    ax2.plot(l_p_termo, p_m_termo, '-', color='blue', linewidth=2.5,
-             label='$p_m$ нульмерная')
-    ax2.plot(l_p_lag, p_m_lag, '--', color='red', linewidth=2.5,
-             label='$p_m$ газодинамическая')
-
-    ax2.set_xlabel('$l_p$, м', fontsize=14)
-    ax2.set_ylabel('$p_m$, МПа', fontsize=14)
-    ax2.set_ylim(0, 400)
-    ax2.grid(True, alpha=0.7)
-    ax2.legend(loc='upper right')
-
-    # Скорость (правая ось)
-    ax2_twin = ax2.twinx()
-    ax2_twin.plot(l_p_termo, v_p_termo, '-', color='blue', alpha=0.7)
-    ax2_twin.plot(l_p_lag, v_p_lag, '--', color='red', alpha=0.7)
-    ax2_twin.set_ylabel('$V_p$, м/с', fontsize=14)
-    ax2_twin.set_ylim(0, 1000)
-
-    ax2.set_title(f'Зависимость от пути (T = {T_label})')
-
-    plt.tight_layout()
-    return fig
-
-
-# Упрощенная версия - только от времени, два подграфика
-def plot_comparison_simple(result_termo, result_lagrange, T_label="+15°C"):
-    # Данные нульмерной модели
-    t_termo = result_termo['t'] * 1000
-    p_m_termo = result_termo['p'] / 1e6
-    v_p_termo = result_termo['v']
-
-    # Данные газодинамической модели
-    layers = result_lagrange['layers']
-    t_lag = np.array([layer['t'] * 1000 for layer in layers])
-    p_m_lag = np.array([np.mean(layer['p']) / 1e6 for layer in layers])
-    v_p_lag = np.array([layer['u'][-1] for layer in layers])
-
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), sharex=True)
-
-    # Давление
-    ax1.plot(t_termo, p_m_termo, '-', color='blue', linewidth=2.5,
-             label='Нульмерная модель')
-    ax1.plot(t_lag, p_m_lag, '--', color='red', linewidth=2.5,
-             label='Газодинамическая модель')
-    ax1.set_ylabel('$p_m$, МПа', fontsize=14)
-    ax1.set_ylim(0, 400)
-    ax1.grid(True, alpha=0.7)
-    ax1.legend(loc='upper right')
-    ax1.set_title(f'Сравнение моделей (T = {T_label})', fontsize=14)
-
-    # Скорость
-    ax2.plot(t_termo, v_p_termo, '-', color='blue', linewidth=2.5)
-    ax2.plot(t_lag, v_p_lag, '--', color='red', linewidth=2.5)
-    ax2.set_xlabel('t, мс', fontsize=14)
-    ax2.set_ylabel('$V_p$, м/с', fontsize=14)
-    ax2.set_ylim(0, 1000)
-    ax2.grid(True, alpha=0.7)
-
-    plt.tight_layout()
-    return fig
-
 def plot_lagrange_results(t_vals, p_b_vals, p_p_vals, p_m_vals, v_p_vals, l_p_vals,
                           points, T_label="+15°C"):
     fig, ax1 = plt.subplots(figsize=(14, 10))
 
-    # Давления
-    ax1.plot(t_vals, p_b_vals, '-', color='blue', linewidth=2, label=f'$p_b$', alpha=0.7)
-    ax1.plot(t_vals, p_p_vals, '-', color='red', linewidth=2, label=f'$p_p$', alpha=0.7)
-    ax1.plot(t_vals, p_m_vals, '-', color='limegreen', linewidth=2.5, label=f'$p_m$')
+    ax1.plot(t_vals, p_b_vals, '-', color='blue', linewidth=2, label='$p_b$', alpha=0.7)
+    ax1.plot(t_vals, p_p_vals, '-', color='red', linewidth=2, label='$p_p$', alpha=0.7)
+    ax1.plot(t_vals, p_m_vals, '-', color='limegreen', linewidth=2.5, label='$p_m$')
 
     ax1.set_xlabel('t, мс', fontsize=14)
     ax1.set_ylabel('Давление, МПа', fontsize=14)
@@ -368,29 +250,30 @@ def plot_lagrange_results(t_vals, p_b_vals, p_p_vals, p_m_vals, v_p_vals, l_p_va
     ax1.xaxis.set_major_locator(MultipleLocator(2))
     ax1.grid(True, alpha=0.7)
 
-    # Скорость
     ax2 = ax1.twinx()
-    ax2.plot(t_vals, v_p_vals, '--', color='limegreen', linewidth=2.5, label=f'$V_p$')
+    ax2.plot(t_vals, v_p_vals, '--', color='limegreen', linewidth=2.5, label='$V_p$')
     ax2.set_ylabel('$V_p$, м/с', fontsize=14)
     ax2.set_ylim(0, 1200)
     ax2.yaxis.set_major_locator(MultipleLocator(200))
 
-    # Путь
     ax3 = ax1.twinx()
     ax3.spines['right'].set_position(('axes', 1.15))
-    ax3.plot(t_vals, l_p_vals, ':', color='limegreen', linewidth=3, label=f'$l_p$')
+    ax3.plot(t_vals, l_p_vals, ':', color='limegreen', linewidth=3, label='$l_p$')
     ax3.set_ylabel('$l_p$, м', fontsize=14)
     ax3.set_ylim(0, 6)
     ax3.yaxis.set_major_locator(MultipleLocator(2))
 
-    # Точки
     for name, p in points.items():
         if name in ['0', 'p_m_max', 'm']:
             ax1.scatter([p['t']], [p['p_m']], color='black', s=50, zorder=5)
             ax2.scatter([p['t']], [p['v_p']], color='black', s=50, zorder=5)
             ax3.scatter([p['t']], [p['l_p']], color='black', s=50, zorder=5)
 
-    ax1.legend(loc='upper left')
+    lines1, labels1 = ax1.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    lines3, labels3 = ax3.get_legend_handles_labels()
+    ax1.legend(lines1 + lines2 + lines3, labels1 + labels2 + labels3, loc='upper left')
+
     plt.tight_layout()
     return fig
 
@@ -399,13 +282,9 @@ def plot_lagrange_vs_path(p_b_vals, p_p_vals, p_m_vals, v_p_vals, l_p_vals,
                           points, T_label="+15°C"):
     fig, ax1 = plt.subplots(figsize=(12, 8))
 
-    # Ось 1: Давления от пути
-    ax1.plot(l_p_vals, p_b_vals, '-', color='blue', linewidth=2,
-             label=f'$p_b$', alpha=0.7)
-    ax1.plot(l_p_vals, p_p_vals, '-', color='red', linewidth=2,
-             label=f'$p_p$', alpha=0.7)
-    ax1.plot(l_p_vals, p_m_vals, '-', color='limegreen', linewidth=2.5,
-             label=f'$p_m$')
+    ax1.plot(l_p_vals, p_b_vals, '-', color='blue', linewidth=2, label='$p_b$', alpha=0.7)
+    ax1.plot(l_p_vals, p_p_vals, '-', color='red', linewidth=2, label='$p_p$', alpha=0.7)
+    ax1.plot(l_p_vals, p_m_vals, '-', color='limegreen', linewidth=2.5, label='$p_m$')
 
     ax1.set_xlabel('$l_p$, м', fontsize=14)
     ax1.set_ylabel('Давление, МПа', fontsize=14)
@@ -415,25 +294,20 @@ def plot_lagrange_vs_path(p_b_vals, p_p_vals, p_m_vals, v_p_vals, l_p_vals,
     ax1.xaxis.set_major_locator(MultipleLocator(0.5))
     ax1.grid(True, alpha=0.7)
 
-    # Отмечаем точки
     for name, p in points.items():
         if name in ['0', 'p_m_max', 'm']:
             ax1.scatter([p['l_p']], [p['p_m']], color='black', s=60, zorder=5)
 
-    # Ось 2: Скорость от пути (справа)
     ax2 = ax1.twinx()
-    ax2.plot(l_p_vals, v_p_vals, '--', color='limegreen', linewidth=2.5,
-             label=f'$V_p$')
+    ax2.plot(l_p_vals, v_p_vals, '--', color='limegreen', linewidth=2.5, label='$V_p$')
     ax2.set_ylabel('$V_p$, м/с', fontsize=14)
     ax2.set_ylim(0, 1200)
     ax2.yaxis.set_major_locator(MultipleLocator(200))
 
-    # Отмечаем точки на V_p
     for name, p in points.items():
         if name in ['0', 'p_m_max', 'm']:
             ax2.scatter([p['l_p']], [p['v_p']], color='black', s=60, zorder=5)
 
-    # Легенда
     lines1, labels1 = ax1.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
     ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper right', fontsize=11)
@@ -443,55 +317,142 @@ def plot_lagrange_vs_path(p_b_vals, p_p_vals, p_m_vals, v_p_vals, l_p_vals,
 
     return fig
 
-res_min = RungeKutta4(sys_min, init, stop, report_min, dt, 0, max_steps)  # используем Кутта (Н.У., система, начальное положение снаряда , шаг по времени, число шагов, условие остановки расчета, доп.параметры)
-res_norm = RungeKutta4(sys_norm, init, stop, report_norm, dt, 0, max_steps)   # используем Кутта (Н.У., система, начальное положение снаряда , шаг по времени, число шагов, условие остановки расчета, доп.параметры)
-res_max = RungeKutta4(sys_norm, init, stop, report_norm, dt, 0, max_steps)  # используем Кутта (Н.У., система, начальное положение снаряда , шаг по времени, число шагов, условие остановки расчета, доп.параметры)
 
-# с pandas
+def plot_unified_graphs(result_termo, result_lagrange, T_label="+15°C"):
+    layers = result_lagrange['layers']
+    t_lag = np.array([layer['t'] * 1000 for layer in layers])
+    p_b_lag = np.array([layer['p'][0] / 1e6 for layer in layers])
+    p_p_lag = np.array([layer['p'][-1] / 1e6 for layer in layers])
+    p_m_lag = np.array([np.mean(layer['p']) / 1e6 for layer in layers])
+    v_p_lag = np.array([layer['u'][-1] for layer in layers])
+    l_p_lag = np.array([layer['x'][-1] for layer in layers])
 
-df_1 = pd.DataFrame(res_min, columns=['t', 'x_p', 'V_p', 'A_pa', 'Q_w', 'eta_t', 'z', 'psi', 'p_m',
-                                      'l_p'])  # создаем таблицу со значением переменных + название столбцов
-pd.set_option('display.precision', 5)  # округляем до 5го знака после запятой
+    t_termo = result_termo['t'] * 1000
+    p_m_termo = result_termo['p'] / 1e6
+    v_p_termo = result_termo['v']
+    l_p_termo = result_termo['x']
+
+    points, _ = find_reference_points_lagrange(result_lagrange)
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 10))
+
+    ax1.plot(t_lag, p_b_lag, '-', color='blue', linewidth=2, label='$p_b$', alpha=0.7)
+    ax1.plot(t_lag, p_p_lag, '-', color='red', linewidth=2, label='$p_p$', alpha=0.7)
+    ax1.plot(t_lag, p_m_lag, '-', color='limegreen', linewidth=2.5, label='$p_m$ (газодинам.)')
+    ax1.plot(t_termo, p_m_termo, '--', color='darkgreen', linewidth=2.5, label='$p_m$ (нульмерная)')
+
+    ax1.set_xlabel('t, мс', fontsize=14)
+    ax1.set_ylabel('Давление, МПа', fontsize=14)
+    ax1.set_ylim(0, 500)
+    ax1.yaxis.set_major_locator(MultipleLocator(75))
+    ax1.xaxis.set_major_locator(MultipleLocator(2))
+    ax1.grid(True, alpha=0.7)
+
+    ax1_twin = ax1.twinx()
+    ax1_twin.plot(t_lag, v_p_lag, '--', color='limegreen', linewidth=2.5, label='$V_p$ (газодинам.)')
+    ax1_twin.plot(t_termo, v_p_termo, '--', color='darkgreen', linewidth=2.5, label='$V_p$ (нульмерная)')
+    ax1_twin.set_ylabel('$V_p$, м/с', fontsize=14)
+    ax1_twin.set_ylim(0, 1200)
+    ax1_twin.yaxis.set_major_locator(MultipleLocator(200))
+
+    ax1_twin2 = ax1.twinx()
+    ax1_twin2.spines['right'].set_position(('axes', 1.12))
+    ax1_twin2.plot(t_lag, l_p_lag, ':', color='limegreen', linewidth=3, label='$l_p$ (газодинам.)')
+    ax1_twin2.plot(t_termo, l_p_termo, ':', color='darkgreen', linewidth=3, label='$l_p$ (нульмерная)')
+    ax1_twin2.set_ylabel('$l_p$, м', fontsize=14)
+    ax1_twin2.set_ylim(0, 6)
+    ax1_twin2.yaxis.set_major_locator(MultipleLocator(2))
+
+    for name, p in points.items():
+        if name in ['0', 'p_m_max', 'm']:
+            ax1.scatter([p['t']], [p['p_m']], color='black', s=50, zorder=5)
+            ax1_twin.scatter([p['t']], [p['v_p']], color='black', s=50, zorder=5)
+            ax1_twin2.scatter([p['t']], [p['l_p']], color='black', s=50, zorder=5)
+
+    lines1, labels1 = ax1.get_legend_handles_labels()
+    lines2, labels2 = ax1_twin.get_legend_handles_labels()
+    lines3, labels3 = ax1_twin2.get_legend_handles_labels()
+    ax1.legend(lines1 + lines2 + lines3, labels1 + labels2 + labels3, loc='upper left', fontsize=10)
+
+    ax1.set_title(f'Зависимость от времени (T = {T_label})', fontsize=14)
+
+    ax2.plot(l_p_lag, p_b_lag, '-', color='blue', linewidth=2, label='$p_b$', alpha=0.7)
+    ax2.plot(l_p_lag, p_p_lag, '-', color='red', linewidth=2, label='$p_p$', alpha=0.7)
+    ax2.plot(l_p_lag, p_m_lag, '-', color='limegreen', linewidth=2.5, label='$p_m$ (газодинам.)')
+    ax2.plot(l_p_termo, p_m_termo, '--', color='darkgreen', linewidth=2.5, label='$p_m$ (нульмерная)')
+
+    ax2.set_xlabel('$l_p$, м', fontsize=14)
+    ax2.set_ylabel('Давление, МПа', fontsize=14)
+    ax2.set_ylim(0, 500)
+    ax2.set_xlim(0, max(l_p_lag) * 1.05)
+    ax2.yaxis.set_major_locator(MultipleLocator(75))
+    ax2.xaxis.set_major_locator(MultipleLocator(0.5))
+    ax2.grid(True, alpha=0.7)
+
+    ax2_twin = ax2.twinx()
+    ax2_twin.plot(l_p_lag, v_p_lag, '--', color='limegreen', linewidth=2.5, label='$V_p$ (газодинам.)')
+    ax2_twin.plot(l_p_termo, v_p_termo, '--', color='darkgreen', linewidth=2.5, label='$V_p$ (нульмерная)')
+    ax2_twin.set_ylabel('$V_p$, м/с', fontsize=14)
+    ax2_twin.set_ylim(0, 1200)
+    ax2_twin.yaxis.set_major_locator(MultipleLocator(200))
+
+    for name, p in points.items():
+        if name in ['0', 'p_m_max', 'm']:
+            ax2.scatter([p['l_p']], [p['p_m']], color='black', s=60, zorder=5)
+            ax2_twin.scatter([p['l_p']], [p['v_p']], color='black', s=60, zorder=5)
+
+    lines1, labels1 = ax2.get_legend_handles_labels()
+    lines2, labels2 = ax2_twin.get_legend_handles_labels()
+    ax2.legend(lines1 + lines2, labels1 + labels2, loc='upper right', fontsize=11)
+
+    ax2.set_title(f'Зависимость от пройденного пути (T = {T_label})', fontsize=14)
+
+    plt.tight_layout()
+    return fig
+
+
+res_min = RungeKutta4(sys_min, init, stop, report_min, dt, 0, max_steps)
+res_norm = RungeKutta4(sys_norm, init, stop, report_norm, dt, 0, max_steps)
+res_max = RungeKutta4(sys_norm, init, stop, report_norm, dt, 0, max_steps)
+
+df_1 = pd.DataFrame(res_min, columns=['t', 'x_p', 'V_p', 'A_pa', 'Q_w', 'eta_t', 'z', 'psi', 'p_m', 'l_p'])
+pd.set_option('display.precision', 5)
 t_1 = df_1.t
-
 p_m_T_01 = df_1.p_m
 V_p_T_01 = df_1.V_p
 l_p_T_01 = df_1.l_p
 
 df_1_0 = df_1.query('l_p>=0' and 'V_p>0')
 index_0_1 = df_1_0[:1].index[0]
-t_01 = df_1.t.iloc[index_0_1] * 1e3  # время в мс
+t_01 = df_1.t.iloc[index_0_1] * 1e3
 t_0_1 = f'{t_01:.2f}'
 p_m_0_1 = f'{df_1.p_m.iloc[index_0_1]:.4f}'
 V_p_0_1 = f'{df_1.V_p.iloc[index_0_1]:.4f}'
 l_p_0_1 = f'{df_1.l_p.iloc[index_0_1]:.4f}'
 
 max_index_1 = df_1['p_m'].idxmax()
-t_max1 = df_1.t.iloc[max_index_1] * 1e3  # время в мс
+t_max1 = df_1.t.iloc[max_index_1] * 1e3
 t_max_1 = f'{t_max1:.2f}'
 p_m_max_1 = f'{df_1.p_m.iloc[max_index_1]:.4f}'
 V_p_max_1 = f'{df_1.V_p.iloc[max_index_1]:.4f}'
 l_p_max_1 = f'{df_1.l_p.iloc[max_index_1]:.4f}'
 
 df_e_1 = df_1[df_1['z'] <= z_e]
-
 e_index_1 = df_e_1.index[-1]
-print(df_1.z.iloc[e_index_1])
 
-
-t_e1 = df_1.t.iloc[e_index_1] * 1e3  # время в мс
+t_e1 = df_1.t.iloc[e_index_1] * 1e3
 t_e_1 = f'{t_e1:.2f}'
 p_m_e_1 = f'{df_1.p_m.iloc[e_index_1]:.4f}'
 V_p_e_1 = f'{df_1.V_p.iloc[e_index_1]:.4f}'
 l_p_e_1 = f'{df_1.l_p.iloc[e_index_1]:.4f}'
 
 index_m_1 = df_1[df_1['x_p'] >= (l_m + l_0)].index[0]
-t_m1 = df_1.t.iloc[index_m_1] * 1e3  # время в мс
+t_m1 = df_1.t.iloc[index_m_1] * 1e3
 t_m_1 = f'{t_m1:.2f}'
 p_m_m_1 = f'{df_1.p_m.iloc[index_m_1]:.4f}'
 V_p_m_1 = f'{df_1.V_p.iloc[index_m_1]:.4f}'
 l_p_m_1 = f'{df_1.l_p.iloc[index_m_1]:.4f}'
-print(df_1.z.iloc[index_m_1])
+
 res_T_01 = {
     'Точка': ['0', 'p_max', 'e', 'm'],
     't,мс': [t_0_1, t_max_1, '-', t_m_1],
@@ -513,11 +474,8 @@ res_T_0_1 = {
 index_labels = ['0', 'p_max', 'e', 'm']
 d_res_T_0_1 = pd.DataFrame(res_T_0_1, index=index_labels)
 
-# При температуре T = +15 градусов
-
-df_2 = pd.DataFrame(res_norm, columns=['t', 'x_p', 'V_p', 'A_pa', 'Q_w', 'eta_t', 'z', 'psi', 'p_m',
-                                       'l_p'])  # создаем таблицу со значением переменных + название столбцов
-pd.set_option('display.precision', 5)  # округляем до 5го знака после запятой
+df_2 = pd.DataFrame(res_norm, columns=['t', 'x_p', 'V_p', 'A_pa', 'Q_w', 'eta_t', 'z', 'psi', 'p_m', 'l_p'])
+pd.set_option('display.precision', 5)
 t_2 = df_2.t
 p_m_T_02 = df_2.p_m
 V_p_T_02 = df_2.V_p
@@ -525,14 +483,14 @@ l_p_T_02 = df_2.l_p
 
 df_2_0 = df_2.query('l_p>=0' and 'V_p>0')
 index_0_2 = df_2_0[:1].index[0]
-t_02 = df_2.t.iloc[index_0_2] * 1e3  # время в мс
+t_02 = df_2.t.iloc[index_0_2] * 1e3
 t_0_2 = f'{t_02:.2f}'
 p_m_0_2 = f'{df_2.p_m.iloc[index_0_2]:.4f}'
 V_p_0_2 = f'{df_2.V_p.iloc[index_0_2]:.4f}'
 l_p_0_2 = f'{df_2.l_p.iloc[index_0_2]:.4f}'
 
 max_index_2 = df_2['p_m'].idxmax()
-t_max2 = df_2.t.iloc[max_index_2] * 1e3  # время в мс
+t_max2 = df_2.t.iloc[max_index_2] * 1e3
 t_max_2 = f'{t_max2:.2f}'
 p_m_max_2 = f'{df_2.p_m.iloc[max_index_2]:.4f}'
 V_p_max_2 = f'{df_2.V_p.iloc[max_index_2]:.4f}'
@@ -540,14 +498,14 @@ l_p_max_2 = f'{df_2.l_p.iloc[max_index_2]:.4f}'
 
 df_e_2 = df_2[df_2['z'] >= z_e]
 e_index_2 = df_e_2.index[0]
-t_e2 = df_2.t.iloc[e_index_2] * 1e3  # время в мс
+t_e2 = df_2.t.iloc[e_index_2] * 1e3
 t_e_2 = f'{t_e2:.2f}'
 p_m_e_2 = f'{df_2.p_m.iloc[e_index_2]:.4f}'
 V_p_e_2 = f'{df_2.V_p.iloc[e_index_2]:.4f}'
 l_p_e_2 = f'{df_2.l_p.iloc[e_index_2]:.4f}'
 
 index_m_2 = df_2[df_2['x_p'] >= (l_m + l_0)].index[0]
-t_m2 = df_2.t.iloc[index_m_2] * 1e3  # время в мс
+t_m2 = df_2.t.iloc[index_m_2] * 1e3
 t_m_2 = f'{t_m2:.2f}'
 p_m_m_2 = f'{df_2.p_m.iloc[index_m_2]:.4f}'
 V_p_m_2 = f'{df_2.V_p.iloc[index_m_2]:.4f}'
@@ -574,14 +532,10 @@ res_T_0_2 = {
 index_labels = ['0', 'p_max', 'e', 'm']
 d_res_T_0_2 = pd.DataFrame(res_T_0_2, index=index_labels)
 
-# При температуре T = +50 градусов
-
-df_3 = pd.DataFrame(res_max, columns=['t', 'x_p', 'V_p', 'A_pa', 'Q_w', 'eta_t', 'z', 'psi', 'p_m',
-                                      'l_p'])  # создаем таблицу со значением переменных + название столбцов
-pd.set_option('display.precision', 5)  # округляем до 5го знака после запятой
-new_df_3 = df_3.rename(columns={'t': 't,c', 'x_p': 'x_p,м', 'V_p': 'V_p, м/с', 'p_m': 'p_m, МПа',
-                                'l_p': 'l_p,м'})  # переименновываем  столбцы
-df_3_last = new_df_3.tail(1)  # значение последней строки с переименноваными столбцами
+df_3 = pd.DataFrame(res_max, columns=['t', 'x_p', 'V_p', 'A_pa', 'Q_w', 'eta_t', 'z', 'psi', 'p_m', 'l_p'])
+pd.set_option('display.precision', 5)
+new_df_3 = df_3.rename(columns={'t': 't,c', 'x_p': 'x_p,м', 'V_p': 'V_p, м/с', 'p_m': 'p_m, МПа', 'l_p': 'l_p,м'})
+df_3_last = new_df_3.tail(1)
 t_3 = df_3.t
 p_m_T_03 = df_3.p_m
 V_p_T_03 = df_3.V_p
@@ -589,14 +543,14 @@ l_p_T_03 = df_3.l_p
 
 df_0_3 = df_3.query('l_p>=0' and 'V_p>0')
 index_0_3 = df_0_3[:1].index[0]
-t_03 = df_3.t.iloc[index_0_3] * 1e3  # время в мс
+t_03 = df_3.t.iloc[index_0_3] * 1e3
 t_0_3 = f'{t_03:.2f}'
 p_m_0_3 = f'{df_3.p_m.iloc[index_0_3]:.4f}'
 V_p_0_3 = f'{df_3.V_p.iloc[index_0_3]:.4f}'
 l_p_0_3 = f'{df_3.l_p.iloc[index_0_3]:.4f}'
 
 max_index_3 = df_3['p_m'].idxmax()
-t_max3 = df_3.t.iloc[max_index_3] * 1e3  # время в мс
+t_max3 = df_3.t.iloc[max_index_3] * 1e3
 t_max_3 = f'{t_max3:.2f}'
 p_m_max_3 = f'{df_3.p_m.iloc[max_index_3]:.4f}'
 V_p_max_3 = f'{df_3.V_p.iloc[max_index_3]:.4f}'
@@ -604,14 +558,14 @@ l_p_max_3 = f'{df_3.l_p.iloc[max_index_3]:.4f}'
 
 df_e_3 = df_3[df_3['z'] >= z_e]
 e_index_3 = df_e_3.index[0]
-t_e3 = df_3.t.iloc[e_index_3] * 1e3  # время в мс
+t_e3 = df_3.t.iloc[e_index_3] * 1e3
 t_e_3 = f'{t_e3:.2f}'
 p_m_e_3 = f'{df_3.p_m.iloc[e_index_3]:.4f}'
 V_p_e_3 = f'{df_3.V_p.iloc[e_index_3]:.4f}'
 l_p_e_3 = f'{df_3.l_p.iloc[e_index_3]:.4f}'
 
 index_m_3 = df_3[df_3['x_p'] >= (l_m + l_0)].index[0]
-t_m3 = df_3.t.iloc[index_m_3] * 1e3  # время в мс
+t_m3 = df_3.t.iloc[index_m_3] * 1e3
 t_m_3 = f'{t_m3:.2f}'
 p_m_m_3 = f'{df_3.p_m.iloc[index_m_3]:.4f}'
 V_p_m_3 = f'{df_3.V_p.iloc[index_m_3]:.4f}'
@@ -659,17 +613,14 @@ print('Погрешность по скорости = ', f'{epsilon_v:.4f}', '%'
 fig = plt.figure(figsize=(20, 14))
 ax = fig.add_subplot()
 plt.grid(linewidth=2)
-# matplotlib.rc('font', size=20)
 line_p_m_1 = ax.plot(t_1 * 1e3, p_m_T_01, '-', label='$p_m$ ($T= -50℃$)', color="blue", linewidth=3)
 ax.set_xlabel('t,мс', fontsize=30)
-ax.xaxis.set_major_locator(MultipleLocator(2.5))  # шаг по времени
-ax.yaxis.set_major_locator(MultipleLocator(75))  # шаг по давлению
+ax.xaxis.set_major_locator(MultipleLocator(2.5))
+ax.yaxis.set_major_locator(MultipleLocator(75))
 ax.set_ylabel('$p_{m}$,МПа', color='black', fontsize=30)
 ax.tick_params('y', colors='black', labelsize=25)
 ax.tick_params('x', colors='black', labelsize=25)
-
 ax.xaxis.set_major_locator(MultipleLocator(1))
-
 
 ax.scatter(
     [df_1['t'].iloc[index_0_1] * 1e3, df_1['t'].iloc[max_index_1] * 1e3,
@@ -702,7 +653,7 @@ ax2.scatter(
     [df_1['V_p'].iloc[index_0_1], df_1['V_p'].iloc[max_index_1],
      df_1['V_p'].iloc[index_m_1]], marker="o", color='purple', s=50)
 ax2.set_ylim(0, 1000)
-ax2.yaxis.set_major_locator(MultipleLocator(200))  # шаг по скорости
+ax2.yaxis.set_major_locator(MultipleLocator(200))
 
 line_V_p_2 = ax2.plot(t_2 * 1e3, V_p_T_02, '--', label='$V_p$ (T= +15℃)', color="limegreen", linewidth=3)
 ax2.scatter(
@@ -747,14 +698,12 @@ ax3.scatter(
      df_3['l_p'].iloc[e_index_3], df_3['l_p'].iloc[index_m_3]], marker="o", color='black', s=50)
 ax3.tick_params('y', colors='black', labelsize=25)
 
-fig.legend(bbox_to_anchor=(0.3, 0.95),fontsize=20)
+fig.legend(bbox_to_anchor=(0.3, 0.95), fontsize=20)
 
 plt.tight_layout()
 plt.savefig('СМ6-69_Пальников_СД_график_1.png')
 
 fig.show()
-
-# График 2
 
 fig = plt.figure(figsize=(14, 10))
 ax = fig.add_subplot()
@@ -817,11 +766,10 @@ ax2.scatter(
     [df_3['V_p'].iloc[index_0_3], df_3['V_p'].iloc[max_index_3],
      df_3['V_p'].iloc[e_index_3], df_3['V_p'].iloc[index_m_3]], marker="o", color='black', s=50)
 
-fig.legend(ncol=2, bbox_to_anchor=(0.65, 0.3),fontsize=20)
+fig.legend(ncol=2, bbox_to_anchor=(0.65, 0.3), fontsize=20)
 plt.tight_layout()
 plt.savefig('СМ6-69_Пальников_СД_график_2.png')
 fig.show()
-
 
 opts = create_opts_for_lagrange('СМ6-69_Пальников_СД_data.csv', '180/57', T_0=288.15)
 result = ozvb_lagrange(opts)
@@ -829,7 +777,6 @@ result = ozvb_lagrange(opts)
 points, data = find_reference_points_lagrange(result)
 t_vals, p_b_vals, p_p_vals, p_m_vals, v_p_vals, l_p_vals = data
 
-# Таблица
 df = pd.DataFrame([
     {'Точка': f'«{k}»', 't, мс': f"{v['t']:.2f}",
      'p_b, МПа': f"{v['p_b']:.2f}", 'p_p, МПа': f"{v['p_p']:.2f}",
@@ -847,4 +794,8 @@ fig_path = plot_lagrange_vs_path(p_b_vals, p_p_vals, p_m_vals, v_p_vals,
                                  l_p_vals, points)
 fig_path.savefig('lagrange_vs_path_T15.png')
 
+result_termo = {'t': df_2['t'].values, 'p': df_2['p_m'].values * 1e6,
+                'v': df_2['V_p'].values, 'x': df_2['l_p'].values}
 
+fig_unified = plot_unified_graphs(result_termo, result, T_label="+15°C")
+fig_unified.savefig('unified_comparison_T15.png', dpi=300)
