@@ -237,7 +237,7 @@ def find_reference_points_lagrange(result, x_initial=0.0):
 
 def plot_lagrange_results(t_vals, p_b_vals, p_p_vals, p_m_vals, v_p_vals, l_p_vals,
                           points, T_label="+15°C"):
-    fig, ax1 = plt.subplots(figsize=(14, 10))
+    fig, ax1 = plt.subplots(figsize=(20, 10))
 
     ax1.plot(t_vals, p_b_vals, '-', color='blue', linewidth=2, label='$p_b$', alpha=0.7)
     ax1.plot(t_vals, p_p_vals, '-', color='red', linewidth=2, label='$p_p$', alpha=0.7)
@@ -280,7 +280,7 @@ def plot_lagrange_results(t_vals, p_b_vals, p_p_vals, p_m_vals, v_p_vals, l_p_va
 
 def plot_lagrange_vs_path(p_b_vals, p_p_vals, p_m_vals, v_p_vals, l_p_vals,
                           points, T_label="+15°C"):
-    fig, ax1 = plt.subplots(figsize=(12, 8))
+    fig, ax1 = plt.subplots(figsize=(20, 10))
 
     ax1.plot(l_p_vals, p_b_vals, '-', color='blue', linewidth=2, label='$p_b$', alpha=0.7)
     ax1.plot(l_p_vals, p_p_vals, '-', color='red', linewidth=2, label='$p_p$', alpha=0.7)
@@ -413,7 +413,7 @@ def plot_unified_graphs(result_termo, result_lagrange, T_label="+15°C"):
 
 res_min = RungeKutta4(sys_min, init, stop, report_min, dt, 0, max_steps)
 res_norm = RungeKutta4(sys_norm, init, stop, report_norm, dt, 0, max_steps)
-res_max = RungeKutta4(sys_norm, init, stop, report_norm, dt, 0, max_steps)
+res_max = RungeKutta4(sys_max, init, stop, report_max, dt, 0, max_steps)
 
 df_1 = pd.DataFrame(res_min, columns=['t', 'x_p', 'V_p', 'A_pa', 'Q_w', 'eta_t', 'z', 'psi', 'p_m', 'l_p'])
 pd.set_option('display.precision', 5)
@@ -610,7 +610,7 @@ print('Эталонное дульная скорость = ', v_pm, 'м/с')
 epsilon_v = (df_2.V_p.iloc[index_m_2] - v_pm) / v_pm * 100
 print('Погрешность по скорости = ', f'{epsilon_v:.4f}', '%')
 
-fig = plt.figure(figsize=(20, 14))
+fig = plt.figure(figsize=(20, 10))
 ax = fig.add_subplot()
 plt.grid(linewidth=2)
 line_p_m_1 = ax.plot(t_1 * 1e3, p_m_T_01, '-', label='$p_m$ ($T= -50℃$)', color="blue", linewidth=3)
@@ -627,7 +627,7 @@ ax.scatter(
      df_1['t'].iloc[index_m_1] * 1e3],
     [df_1['p_m'].iloc[index_0_1], df_1['p_m'].iloc[max_index_1],
      df_1['p_m'].iloc[index_m_1]], marker="o", color='purple', s=50)
-ax.set_ylim(0, 400)
+ax.set_ylim(0, 500)
 
 line_p_m_2 = ax.plot(t_2 * 1e3, p_m_T_02, '-', label='$p_m$ ($T=+15℃$)', color="limegreen", linewidth=3)
 ax.scatter(
@@ -652,7 +652,7 @@ ax2.scatter(
      df_1['t'].iloc[index_m_1] * 1e3],
     [df_1['V_p'].iloc[index_0_1], df_1['V_p'].iloc[max_index_1],
      df_1['V_p'].iloc[index_m_1]], marker="o", color='purple', s=50)
-ax2.set_ylim(0, 1000)
+ax2.set_ylim(0, 1200)
 ax2.yaxis.set_major_locator(MultipleLocator(200))
 
 line_V_p_2 = ax2.plot(t_2 * 1e3, V_p_T_02, '--', label='$V_p$ (T= +15℃)', color="limegreen", linewidth=3)
@@ -701,11 +701,11 @@ ax3.tick_params('y', colors='black', labelsize=25)
 fig.legend(bbox_to_anchor=(0.3, 0.95), fontsize=20)
 
 plt.tight_layout()
-plt.savefig('СМ6-69_Пальников_СД_график_1.png')
+plt.savefig('СМ6-69_Пальников_СД_график_1.png', dpi=300)
 
 fig.show()
 
-fig = plt.figure(figsize=(14, 10))
+fig = plt.figure(figsize=(20, 10))
 ax = fig.add_subplot()
 plt.grid(linewidth=2)
 
@@ -722,7 +722,7 @@ ax.scatter(
      df_1['l_p'].iloc[index_m_1]],
     [df_1['p_m'].iloc[index_0_1], df_1['p_m'].iloc[max_index_1],
      df_1['p_m'].iloc[index_m_1]], marker="o", color='purple', s=50)
-ax.set_ylim(0, 400)
+ax.set_ylim(0, 500)
 ax.set_xlim(0, 5)
 
 line_p_m_2 = ax.plot(df_2['l_p'], p_m_T_02, '-', label='$p_m$ ($T=+15℃$)', color="limegreen", linewidth=3)
@@ -740,6 +740,7 @@ ax.scatter(
      df_3['p_m'].iloc[e_index_3], df_3['p_m'].iloc[index_m_3]], marker="o", color='black', s=50)
 yticks = ax.xaxis.get_major_ticks()
 yticks[1].label1.set_visible(False)
+
 ax2 = ax.twinx()
 line_V_p_1 = ax2.plot(df_1['l_p'], V_p_T_01, '--', label='$V_p$ (T= -50℃)', color="blue", linewidth=3)
 ax2.tick_params('y', colors='black', labelsize=20)
@@ -749,7 +750,7 @@ ax2.scatter(
      df_1['l_p'].iloc[index_m_1]],
     [df_1['V_p'].iloc[index_0_1], df_1['V_p'].iloc[max_index_1],
      df_1['V_p'].iloc[index_m_1]], marker="o", color='purple', s=50)
-ax2.set_ylim(0, 1000)
+ax2.set_ylim(0, 1200)
 ax2.yaxis.set_major_locator(MultipleLocator(200))
 
 ax2.plot(df_2['l_p'], V_p_T_02, '--', label='$V_p$ (T= +15℃)', color="limegreen", linewidth=3)
@@ -768,7 +769,7 @@ ax2.scatter(
 
 fig.legend(ncol=2, bbox_to_anchor=(0.65, 0.3), fontsize=20)
 plt.tight_layout()
-plt.savefig('СМ6-69_Пальников_СД_график_2.png')
+plt.savefig('СМ6-69_Пальников_СД_график_2.png', dpi=300)
 fig.show()
 
 opts = create_opts_for_lagrange('СМ6-69_Пальников_СД_data.csv', '180/57', T_0=288.15)
@@ -788,14 +789,14 @@ print(df.to_string(index=False))
 
 fig = plot_lagrange_results(t_vals, p_b_vals, p_p_vals, p_m_vals,
                             v_p_vals, l_p_vals, points)
-fig.savefig('lagrange_T15.png')
+fig.savefig('СМ6-69_Пальников_СД_график_3.png', dpi=300)
 
 fig_path = plot_lagrange_vs_path(p_b_vals, p_p_vals, p_m_vals, v_p_vals,
                                  l_p_vals, points)
-fig_path.savefig('lagrange_vs_path_T15.png')
+fig_path.savefig('СМ6-69_Пальников_СД_график_4.png', dpi=300)
 
 result_termo = {'t': df_2['t'].values, 'p': df_2['p_m'].values * 1e6,
                 'v': df_2['V_p'].values, 'x': df_2['l_p'].values}
 
 fig_unified = plot_unified_graphs(result_termo, result, T_label="+15°C")
-fig_unified.savefig('unified_comparison_T15.png', dpi=300)
+fig_unified.savefig('СМ6-69_Пальников_СД_график_5.png', dpi=300)
